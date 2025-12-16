@@ -1,0 +1,52 @@
+version: '3'
+
+services:
+  # Puppet Master Service
+  puppet-master:
+    image: puppet/puppetserver:latest
+    container_name: puppet-master
+    environment:
+      - PUPPETSERVER_JAVA_ARGS="-Xms2g -Xmx2g"
+      - PUPPETSERVER_LOG_LEVEL=debug
+      - PUPPETSERVER_USE_LEGACY_CA=true
+      - PUPPETSERVER_ENABLE_HIERA=true
+    ports:
+      - "8140:8140"  # Expose Puppet server port
+    volumes:
+      - puppet-master-data:/etc/puppetlabs/puppet
+      - puppet-server-logs:/var/log/puppetlabs/puppetserver
+    networks:
+      - puppet_network
+    restart: always
+
+  # Puppet Agent Service
+  puppet-agent:
+    image: puppet/puppet-agent:latest
+    container_name: puppet-agent
+    environment:
+      - PUPPET_AGENT_CERTNAME=puppet-agent
+      - PUPPET_SERVER=puppet-master
+    depends_on:
+      - puppet-master
+    networks:
+      - puppet_network
+    restart: always
+    entrypoint: /bin/bash -c "sleep 30 && puppet agent -t"
+    volumes:
+      - puppet-agent-data:/etc/puppetlabs/puppet
+    tty: true
+    stdin_open: true
+
+# Volumes for persistence
+volumes:
+  puppet-master-data:
+    driver: local
+  puppet-agent-data:
+    driver: local
+  puppet-server-logs:
+    driver: local
+
+# Networks for internal communication
+networks:
+  puppet_network:
+    driver: bridge
