@@ -1,2 +1,2 @@
-# linux-ui
-linux-ui
+# puppet-ui
+puppet-ui
