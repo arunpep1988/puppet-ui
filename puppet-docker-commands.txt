@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# Check if Docker Compose is running
+echo "Checking Docker Compose containers status..."
+docker ps
+
+# Check Puppet Master logs for any issues
+echo "Checking Puppet Master logs..."
+docker logs -f puppet-master &
+
+# Check Puppet Agent logs for any issues
+echo "Checking Puppet Agent logs..."
+docker logs -f puppet-agent &
+
+# Run Puppet Agent -t on the Puppet Agent container
+echo "Running Puppet Agent..."
+docker exec -it puppet-agent /bin/bash -c "puppet agent -t"
+
+# List the certificate requests on Puppet Master
+echo "Listing certificate requests on Puppet Master..."
+docker exec -it puppet-master /bin/bash -c "puppetserver ca list --all"
+
+# If certificate requests exist, sign them (replace with actual agent names)
+echo "Signing certificate requests (if any)..."
+docker exec -it puppet-master /bin/bash -c "puppetserver ca sign --certname puppet-agent"
+
+# Check Puppet Agent configuration to ensure it's pointing to Puppet Master
+echo "Checking Puppet Agent configuration..."
+docker exec -it puppet-agent /bin/bash -c "puppet agent --configprint server"
+
+# Verify Puppet Master is accepting connections
+echo "Verifying Puppet Master connection..."
+docker exec -it puppet-agent /bin/bash -c "puppet agent -t"
+
+# Create a simple manifest to test Puppet configuration
+echo "Creating a simple Puppet manifest..."
+docker exec -it puppet-master /bin/bash -c "echo -e 'class { \"apt\": }' > /etc/puppetlabs/code/environments/production/manifests/init.pp"
+
+# Run Puppet Agent again to apply the manifest
+echo "Running Puppet Agent again to apply the manifest..."
+docker exec -it puppet-agent /bin/bash -c "puppet agent -t"
+
+# Show status of the Puppet Server service (inside the Puppet Master container)
+echo "Checking Puppet Master service status..."
+docker exec -it puppet-master /bin/bash -c "systemctl status puppetserver"
+
+# Optionally, restart Puppet Master and Agent if needed
+# echo "Restarting Puppet containers..."
+# docker-compose restart puppet-master puppet-agent
